@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>2025 IRS 15-T Fringe Benefit Withholding Calculator (Semimonthly, Fringe-Only Taxes)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 30px; max-width:730px;}
+    label { display:block; margin-top:10px;}
+    select, input { margin-top: 3px; }
+    .result { margin-top: 24px; background:#eef; padding:16px; max-width:480px;}
+    .section { margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <h2>Taxable Fringe Benefit Tax Calculator (IRS Pub 15-T, 2025, Semimonthly)</h2>
+  <form id="taxForm">
+    <div class="section">
+      <label>
+        Fringe Benefit Value ($):
+        <input type="number" id="fringe" min="0" step="0.01" required>
+      </label>
+      <label>
+        Regular Wage This Paycheck ($, <em>before</em> fringe):
+        <input type="number" id="baseWages" min="0" step="0.01" required>
+      </label>
+      <label>
+        Pay Frequency: <b>Semimonthly</b>
+      </label>
+    </div>
+    <div class="section">
+      <label>
+        Federal Withholding Method:
+        <select id="fedMethod">
+          <option value="flat">Flat Supplemental Rate (22%)</option>
+          <option value="pub15t">Standard IRS 15-T Based (W-4 style, <b>2025 Semimonthly</b>)</option>
+        </select>
+      </label>
+      <div id="w4options" style="display:none; margin-left:18px;">
+        <label>
+          Filing Status:
+          <select id="filingStatus">
+            <option value="single">Single or Married filing separately</option>
+            <option value="married">Married filing jointly</option>
+            <option value="head">Head of household</option>
+          </select>
+        </label>
+        <label>
+          Step 4(a): Other Income ($):
+          <input type="number" id="w4OtherIncome" step="0.01" value="0">
+        </label>
+        <label>
+          Step 4(b): Deductions ($):
+          <input type="number" id="w4Deductions" step="0.01" value="0">
+        </label>
+        <label>
+          Step 3: Dependents (total $2,000 for each child, $500 for others):
+          <input type="number" id="w4Dependents" step="1" value="0">
+        </label>
+        <label>
+          Extra withholding per pay period ($, W-4 Step 4c):
+          <input type="number" id="w4Extra" step="0.01" value="0">
+        </label>
+      </div>
+    </div>
+    <div class="section">
+      <label>
+        State:
+        <select id="stateSelect">
+          <option value="">Select a state</option>
+          <option value="5.0">Alabama</option>
+          <option value="0.0">Alaska</option>
+          <option value="2.5">Arizona</option>
+          <option value="4.7">Arkansas</option>
+          <option value="13.3">California</option>
+          <option value="4.4">Colorado</option>
+          <option value="6.99">Connecticut</option>
+          <option value="6.6">Delaware</option>
+          <option value="0.0">Florida</option>
+          <option value="5.75">Georgia</option>
+          <option value="11.0">Hawaii</option>
+          <option value="5.8">Idaho</option>
+          <option value="4.95">Illinois</option>
+          <option value="3.23">Indiana</option>
+          <option value="6.0">Iowa</option>
+          <option value="5.7">Kansas</option>
+          <option value="4.5">Kentucky</option>
+          <option value="4.25">Louisiana</option>
+          <option value="7.15">Maine</option>
+          <option value="5.75">Maryland</option>
+          <option value="9.0">Massachusetts</option>
+          <option value="4.25">Michigan</option>
+          <option value="9.85">Minnesota</option>
+          <option value="5.0">Mississippi</option>
+          <option value="4.95">Missouri</option>
+          <option value="6.75">Montana</option>
+          <option value="6.64">Nebraska</option>
+          <option value="0.0">Nevada</option>
+          <option value="4.0">New Hampshire</option>
+          <option value="10.75">New Jersey</option>
+          <option value="5.9">New Mexico</option>
+          <option value="10.9">New York</option>
+          <option value="4.5">North Carolina</option>
+          <option value="2.9">North Dakota</option>
+          <option value="3.99">Ohio</option>
+          <option value="4.75">Oklahoma</option>
+          <option value="9.9">Oregon</option>
+          <option value="3.07">Pennsylvania</option>
+          <option value="5.99">Rhode Island</option>
+          <option value="6.5">South Carolina</option>
+          <option value="0.0">South Dakota</option>
+          <option value="0.0">Tennessee</option>
+          <option value="0.0">Texas</option>
+          <option value="4.85">Utah</option>
+          <option value="8.75">Vermont</option>
+          <option value="5.75">Virginia</option>
+          <option value="7.0">Washington</option>
+          <option value="6.5">West Virginia</option>
+          <option value="7.65">Wisconsin</option>
+          <option value="0.0">Wyoming</option>
+          <option value="10.75">District of Columbia</option>
+        </select>
+      </label>
+      <label>
+        State Withholding Rate (%):
+        <input type="number" id="stateRate" min="0" max="100" step="0.01" value="5">
+      </label>
+    </div>
+    <button type="submit">Calculate Taxes</button>
+  </form>
+  <div class="result" id="result" style="display:none;"></div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // IRS Pub 15-T 2025 Percentage Method Table for Semimonthly
+  const IRS_15T_2025 = {
+    semimonthly: {
+      single:    { stdDeduction: 197.10, brackets: [
+        { upTo: 199,      base: 0,        percent: 0,    over: 199 },
+        { upTo: 638,      base: 0,        percent: .10,  over: 199 },
+        { upTo: 1993,     base: 43.90,    percent: .12,  over: 638 },
+        { upTo: 4541,     base: 232.06,   percent: .22,  over: 1993 },
+        { upTo: 10277,    base: 868.02,   percent: .24,  over: 4541 },
+        { upTo: 12685,    base: 2117.50,  percent: .32,  over: 10277 },
+        { upTo: 21550,    base: 4916.46,  percent: .35,  over: 12685 },
+        { upTo: Infinity, base: 7810.71,  percent: .37,  over: 21550 }
+      ]},
+      married:  { stdDeduction: 394.20, brackets: [
+        { upTo: 638,      base: 0,         percent: 0,    over: 638 },
+        { upTo: 2299,     base: 0,         percent: .10,  over: 638 },
+        { upTo: 6773,     base: 166.10,    percent: .12,  over: 2299 },
+        { upTo: 10751,    base: 735.22,    percent: .22,  over: 6773 },
+        { upTo: 19633,    base: 1763.94,   percent: .24,  over: 10751 },
+        { upTo: 24613,    base: 4129.94,   percent: .32,  over: 19633 },
+        { upTo: 36118,    base: 6044.54,   percent: .35,  over: 24613 },
+        { upTo: Infinity, base: 10232.39,  percent: .37,  over: 36118 }
+      ]},
+      head:     { stdDeduction: 296.40, brackets: [
+        { upTo: 448,      base: 0,        percent: 0,    over: 448 },
+        { upTo: 1919,     base: 0,        percent: .10,  over: 448 },
+        { upTo: 4222,     base: 147.10,   percent: .12,  over: 1919 },
+        { upTo: 10805,    base: 428.74,   percent: .22,  over: 4222 },
+        { upTo: 12621,    base: 1961.76,  percent: .24,  over: 10805 },
+        { upTo: 22058,    base: 2401.44,  percent: .32,  over: 12621 },
+        { upTo: 25787,    base: 5290.00,  percent: .35,  over: 22058 },
+        { upTo: Infinity, base: 6527.45,  percent: .37,  over: 25787 }
+      ]}
+    }
+  };
+
+  function pub15t2025FedWithholding(taxable, frequency, filingStatus, depAdj, w4extra) {
+    let table = IRS_15T_2025[frequency] && IRS_15T_2025[frequency][filingStatus];
+    if (!table) return 0;
+    let adjTaxable = taxable - table.stdDeduction - depAdj;
+    if(adjTaxable <= 0) return w4extra || 0;
+    let bracket = table.brackets.find(b => adjTaxable <= b.upTo);
+    if (!bracket) bracket = table.brackets[table.brackets.length-1];
+    let calcTax = bracket.base + bracket.percent * (adjTaxable - bracket.over);
+    if(w4extra) calcTax += w4extra;
+    return calcTax;
+  }
+
+  function fedMethodChange() {
+    const method = document.getElementById("fedMethod").value;
+    document.getElementById("w4options").style.display = (method === "pub15t") ? "" : "none";
+  }
+  fedMethodChange();
+  document.getElementById("fedMethod").addEventListener("change", fedMethodChange);
+
+  function populateStateRate() {
+    var stateDropdown = document.getElementById("stateSelect");
+    var stateRate = document.getElementById("stateRate");
+    var selectedRate = stateDropdown.value;
+    if(selectedRate !== "") {
+      stateRate.value = selectedRate;
+    } else {
+      stateRate.value = "";
+    }
+  }
+  document.getElementById("stateSelect").addEventListener("change", populateStateRate);
+
+  document.getElementById("taxForm").addEventListener("submit", function(event){
+    event.preventDefault();
+    const fringe = parseFloat(document.getElementById("fringe").value) || 0;
+    const baseWages = parseFloat(document.getElementById("baseWages").value) || 0;
+    const totalWages = baseWages + fringe;
+    const payFreq = "semimonthly";
+    const fedMethod = document.getElementById("fedMethod").value;
+    let fedTaxOnFringe = 0, fedDescription = "", fedTaxTotal = 0, fedTaxBase = 0;
+    if (fedMethod === "flat") {
+      fedTaxOnFringe = fringe * 0.22;
+      fedDescription = "Flat Supplemental Rate (22%)";
+      fedTaxTotal = fedTaxOnFringe;
+    } else {
+      const filingStatus = document.getElementById("filingStatus").value;
+      const w4OtherIncome = parseFloat(document.getElementById("w4OtherIncome").value) || 0;
+      const w4Deductions = parseFloat(document.getElementById("w4Deductions").value) || 0;
+      const w4Dependents = parseFloat(document.getElementById("w4Dependents").value) || 0;
+      const w4Extra = parseFloat(document.getElementById("w4Extra").value) || 0;
+      let depAdj = w4Dependents;
+      let taxableWithFringe = totalWages + w4OtherIncome - w4Deductions;
+      let taxableWithoutFringe = baseWages + w4OtherIncome - w4Deductions;
+      // Compute total federal tax for (salary+fringe), then for salary only. Difference is the tax on just the fringe
+      let fedWithFringe = pub15t2025FedWithholding(taxableWithFringe, payFreq, filingStatus, depAdj, w4Extra);
+      let fedWithoutFringe = pub15t2025FedWithholding(taxableWithoutFringe, payFreq, filingStatus, depAdj, w4Extra);
+      fedTaxOnFringe = fedWithFringe - fedWithoutFringe;
+      fedTaxBase = fedWithoutFringe;
+      fedTaxTotal = fedWithFringe;
+      fedDescription = "IRS 15-T 2025 Percentage Method (Semimonthly, Tax on Fringe Only)";
+    }
+    const stateRate = (parseFloat(document.getElementById("stateRate").value) || 0) / 100;
+    const stateTax = fringe * stateRate;
+    const ssRate = 0.062;
+    const medicareRate = 0.0145;
+    const ssTax = fringe * ssRate;
+    const medicareTax = fringe * medicareRate;
+    const totalTax = fedTaxOnFringe + stateTax + ssTax + medicareTax;
+    function f(num) { return "$" + num.toFixed(2); }
+    document.getElementById("result").innerHTML =
+      "<b>Taxes on Fringe Value Only:</b><br>" +
+      "Fringe Benefit: " + f(fringe) + "<br>" +
+      "Federal Withholding: " + f(fedTaxOnFringe) + " <span style='font-size:90%'>("+fedDescription+")</span><br>" +
+      "State Withholding: " + f(stateTax) + " (" + (stateRate*100).toFixed(2) + "%)<br>" +
+      "Social Security (6.2%): " + f(ssTax) + "<br>" +
+      "Medicare (1.45%): " + f(medicareTax) + "<br>" +
+      "<b>Total Taxes Withheld on Fringe: " + f(totalTax) + "</b><br>";
+    document.getElementById("result").style.display = "";
+  });
+});
+</script>
+</body>
+</html>
